@@ -1,0 +1,5 @@
+---
+admin_user_name: jan
+
+admin_user_ssh_keys:
+  - "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIJiZPFmOnSOC2f85lgM0+a/LhsTMzaDgngA2TUe2aQ3K jan.dedek@tul.cz"
