@@ -1,0 +1,87 @@
+---
+- name: Samba file server
+  hosts: bifur
+  become: true
+
+  tasks:
+    - name: Install Samba, firewalld and SELinux tools
+      ansible.builtin.dnf:
+        name:
+          - samba
+          - samba-client
+          - firewalld
+          - policycoreutils-python-utils
+        state: present
+
+    - name: Create Samba-only users (no home, no shell)
+      ansible.builtin.user:
+        name: "{{ item }}"
+        create_home: false
+        shell: /sbin/nologin
+        state: present
+      loop: "{{ samba_users }}"
+
+    - name: Set persistent SELinux context for shares
+      community.general.sefcontext:
+        target: "{{ item.path }}(/.*)?"
+        setype: samba_share_t
+        state: present
+      loop: "{{ samba_shares }}"
+      loop_control:
+        label: "{{ item.name }}"
+      when: ansible_facts.selinux.status == 'enabled'
+
+    - name: Create share directories
+      ansible.builtin.file:
+        path: "{{ item.path }}"
+        state: directory
+        owner: "{{ item.owner }}"
+        group: "{{ item.owner }}"
+        mode: "0770"
+        setype: "{{ 'samba_share_t' if ansible_facts.selinux.status == 'enabled' else omit }}"
+      loop: "{{ samba_shares }}"
+      loop_control:
+        label: "{{ item.name }}"
+
+    - name: Deploy smb.conf from template
+      ansible.builtin.template:
+        src: smb.conf.j2
+        dest: /etc/samba/smb.conf
+        owner: root
+        group: root
+        mode: "0644"
+        validate: testparm -s %s
+      notify: Restart smb
+
+    - name: Ensure firewalld is running
+      ansible.builtin.systemd_service:
+        name: firewalld
+        state: started
+        enabled: true
+
+    - name: Do not allow Samba from everywhere
+      ansible.posix.firewalld:
+        service: samba
+        permanent: true
+        immediate: true
+        state: disabled
+
+    - name: Allow Samba only from allowed IPv6 networks
+      ansible.posix.firewalld:
+        rich_rule: 'rule family="ipv6" source address="{{ item }}" service name="samba" accept'
+        permanent: true
+        immediate: true
+        state: enabled
+      loop: "{{ samba_allowed_ipv6_networks }}"
+
+    - name: Ensure smb is running and enabled
+      ansible.builtin.systemd_service:
+        name: smb
+        state: started
+        enabled: true
+
+  handlers:
+    - name: Restart smb
+      ansible.builtin.systemd_service:
+        name: smb
+        state: restarted

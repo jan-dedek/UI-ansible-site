@@ -7,3 +7,6 @@
 
 - name: Manage users
   ansible.builtin.import_playbook: playbooks/users.yml
+
+- name: Samba server
+  ansible.builtin.import_playbook: playbooks/samba.yml

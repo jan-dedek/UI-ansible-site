@@ -1,0 +1,22 @@
+# {{ ansible_managed }}
+# Rucni zmeny budou prepsany pri dalsim behu Ansible.
+
+[global]
+    workgroup = {{ samba_workgroup }}
+    server string = {{ samba_server_string }}
+    security = user
+    map to guest = never
+    passdb backend = tdbsam
+
+    # tiskarny nesdilime
+    load printers = no
+    printing = bsd
+    printcap name = /dev/null
+    disable spoolss = yes
+{% for share in samba_shares %}
+
+[{{ share.name }}]
+{% for key, value in share.items() if key not in ['name', 'owner'] %}
+    {{ key | replace('_', ' ') }} = {{ (value | ternary('yes', 'no')) if value is boolean else value }}
+{% endfor %}
+{% endfor %}

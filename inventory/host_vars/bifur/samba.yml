@@ -1,0 +1,20 @@
+---
+samba_workgroup: WORKGROUP
+samba_server_string: "Samba na %h"
+
+samba_allowed_ipv6_networks:
+  - 2001:718:1c01::/48
+
+samba_users:
+  - smbuser
+
+samba_shares:
+  - name: data
+    owner: smbuser
+    path: /srv/samba/data
+    comment: Sdilena data
+    valid_users: smbuser
+    read_only: false
+    browseable: true
+    create_mask: "0660"
+    directory_mask: "0770"
